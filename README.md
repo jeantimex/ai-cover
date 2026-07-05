@@ -126,9 +126,18 @@ python pipeline.py "soprano_song.mp3" \
 | Mezzo-soprano | Medium (A3-A5) | ±2-3 semitones from soprano |
 | Alto/Contralto | Low (F3-F5) | ±4-5 semitones from soprano |
 
+### Auto F0 vs Manual Control
+
+| Setting | Use When |
+|---------|----------|
+| `--auto-f0` (default) | Cross-gender conversion or very different voice ranges |
+| `--no-auto-f0` | Same-gender, similar range, or you want exact original melody |
+
+**Note:** `--auto-f0` shifts the source pitch to match the reference voice's range. This is helpful for cross-gender conversion but may alter the melody. If the tune sounds different but quality is good, try `--no-auto-f0`.
+
 ### Tips
 
-- **Start with `--auto-f0`** (enabled by default) — It automatically adjusts pitch ranges
+- **Melody sounds different?** — Try `--no-auto-f0` to preserve exact original tune
 - **Add manual `--pitch` if needed** — When auto-adjust isn't enough
 - **Adjust in small steps** — Try ±2 semitones at a time
 - **Listen for artifacts** — Too much shift can cause distortion
