@@ -265,11 +265,51 @@ python pipeline.py "新歌曲.mp3" \
 - 设置 `HF_TOKEN` 环境变量加速下载
 - 重试 — 下载会被缓存
 
+## 声音训练
+
+从多个音频源训练自定义声音模型，获得更高的相似度。
+
+### 训练声音
+
+```bash
+# 从 YouTube 视频训练（推荐 3-5 首歌）
+python train.py --name "taylor" \
+    "https://youtube.com/watch?v=歌曲1" \
+    "https://youtube.com/watch?v=歌曲2" \
+    "https://youtube.com/watch?v=歌曲3"
+
+# 从本地文件训练
+python train.py --name "my_voice" song1.mp3 song2.wav vocals/*.mp3
+
+# 混合来源
+python train.py --name "artist" \
+    "https://youtube.com/watch?v=..." \
+    local_song.mp3
+```
+
+### 使用训练好的声音
+
+```bash
+# 用名称代替 --reference
+python pipeline.py "https://youtube.com/watch?v=歌曲" --voice taylor
+
+# 列出可用的声音
+python train.py --list
+```
+
+### 训练建议
+
+- **3-5 首歌曲**效果最佳（约 15-20 分钟素材）
+- 包含多样性：不同节奏、音高、风格
+- 只使用**同一歌手**的歌曲 — 不要混合不同人的声音
+- 源音频越干净，效果越好
+
 ## 项目结构
 
 ```
 my-singer/
 ├── pipeline.py        # 主入口
+├── train.py           # 声音训练工具
 ├── download.py        # YouTube/本地音频获取
 ├── separate.py        # 三阶段人声分离
 ├── convert_seedvc.py  # Seed-VC 声音转换
@@ -277,6 +317,7 @@ my-singer/
 ├── effects.py         # 音频效果和混音
 ├── qa.py              # 质量检测工具
 ├── models/            # 下载的模型文件
+├── voices/            # 训练的声音模型
 └── song_output/       # 输出目录
 ```
 

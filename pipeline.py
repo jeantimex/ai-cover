@@ -22,6 +22,7 @@ from separate import separate_audio, SeparationResult
 from effects import apply_vocal_effects, mix_stems
 from convert_seedvc import convert_voice as seedvc_convert
 from convert_rvc import convert_voice as rvc_convert
+from train import VOICES_DIR, list_voices, get_voice_dir
 
 
 @dataclass
@@ -256,6 +257,7 @@ if __name__ == "__main__":
     parser.add_argument("source", help="YouTube URL or local audio file")
     parser.add_argument("--engine", choices=["rvc", "seedvc"], default="seedvc")
     parser.add_argument("--reference", help="Reference audio for Seed-VC (path or YouTube URL)")
+    parser.add_argument("--voice", "-v", help="Use a trained voice by name (see: python train.py --list)")
     parser.add_argument("--no-separate-ref", action="store_true", help="Don't separate vocals from reference")
     parser.add_argument("--rvc-model", type=Path, help="RVC model path (.pth)")
     parser.add_argument("--rvc-index", type=Path, help="RVC index path (.index)")
@@ -270,10 +272,37 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Resolve --voice to reference audio
+    reference = args.reference
+    if args.voice:
+        voice_dir = get_voice_dir(args.voice)
+        if not voice_dir.exists():
+            available = list_voices()
+            print(f"Error: Voice '{args.voice}' not found.")
+            if available:
+                print(f"Available voices: {', '.join(available)}")
+            else:
+                print("No trained voices yet. Use: python train.py --name <name> <sources...>")
+            exit(1)
+
+        # Look for reference vocal in the voice directory
+        raw_vocals = voice_dir / "raw_vocals"
+        if raw_vocals.exists():
+            vocal_files = list(raw_vocals.glob("*.wav"))
+            if vocal_files:
+                reference = str(vocal_files[0])  # Use first vocal as reference
+                print(f"Using trained voice '{args.voice}': {reference}")
+
+    if not reference and args.engine == "seedvc":
+        print("Error: Seed-VC requires --reference or --voice")
+        print("  Use: --reference <url_or_path>")
+        print("  Or:  --voice <trained_voice_name>")
+        exit(1)
+
     config = PipelineConfig(
         source=args.source,
         engine=args.engine,
-        reference_audio=args.reference,
+        reference_audio=reference,
         separate_reference=not args.no_separate_ref,
         rvc_model_path=args.rvc_model,
         rvc_index_path=args.rvc_index,

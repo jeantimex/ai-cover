@@ -265,11 +265,51 @@ The quality of the reference audio significantly affects results:
 - Set `HF_TOKEN` environment variable for faster downloads
 - Retry — downloads are cached
 
+## Voice Training
+
+Train custom voice models from multiple audio sources for better similarity.
+
+### Train a Voice
+
+```bash
+# From YouTube videos (3-5 songs recommended)
+python train.py --name "taylor" \
+    "https://youtube.com/watch?v=SONG1" \
+    "https://youtube.com/watch?v=SONG2" \
+    "https://youtube.com/watch?v=SONG3"
+
+# From local files
+python train.py --name "my_voice" song1.mp3 song2.wav vocals/*.mp3
+
+# Mixed sources
+python train.py --name "artist" \
+    "https://youtube.com/watch?v=..." \
+    local_song.mp3
+```
+
+### Use a Trained Voice
+
+```bash
+# Use by name instead of --reference
+python pipeline.py "https://youtube.com/watch?v=SONG" --voice taylor
+
+# List available voices
+python train.py --list
+```
+
+### Training Tips
+
+- **3-5 songs** from the same singer works best (~15-20 min total)
+- Include variety: different tempos, pitches, styles
+- Only use songs from the **same singer** — don't mix voices
+- Cleaner source audio = better results
+
 ## Project Structure
 
 ```
 my-singer/
 ├── pipeline.py        # Main entry point
+├── train.py           # Voice training tool
 ├── download.py        # YouTube/local audio acquisition
 ├── separate.py        # 3-stage vocal separation
 ├── convert_seedvc.py  # Seed-VC voice conversion
@@ -277,6 +317,7 @@ my-singer/
 ├── effects.py         # Audio effects and mixing
 ├── qa.py              # Quality assurance utilities
 ├── models/            # Downloaded model checkpoints
+├── voices/            # Trained voice models
 └── song_output/       # Output directory
 ```
 

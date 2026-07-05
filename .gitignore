@@ -37,6 +37,7 @@ env/
 checkpoints/
 models/
 song_output/
+voices/
 
 # OS
 .DS_Store
