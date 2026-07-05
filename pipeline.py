@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from download import acquire_audio
+from download import acquire_audio, trim_audio, parse_time
 from separate import separate_audio, SeparationResult
 from effects import apply_vocal_effects, mix_stems
 from convert_seedvc import convert_voice as seedvc_convert
@@ -63,6 +63,14 @@ class PipelineConfig:
     backup_vocal_gain: float = -6.0
     instrumental_gain: float = -7.0
 
+    # Time trimming (source)
+    start_time: float | None = None  # Start time in seconds
+    end_time: float | None = None  # End time in seconds
+
+    # Time trimming (reference)
+    ref_start_time: float | None = None
+    ref_end_time: float | None = None
+
     # Output
     output_dir: Path = field(default_factory=lambda: Path("song_output"))
     output_format: Literal["wav", "mp3"] = "wav"
@@ -101,6 +109,17 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     song_dir = config.output_dir / song_id
     song_dir.mkdir(parents=True, exist_ok=True)
 
+    # Trim audio if time range specified
+    if config.start_time is not None or config.end_time is not None:
+        print(f"\n[Stage 0.5] Trimming audio...")
+        trimmed_path = song_dir / "trimmed_input.wav"
+        audio_path = trim_audio(
+            audio_path,
+            trimmed_path,
+            start_time=config.start_time,
+            end_time=config.end_time,
+        )
+
     # Stage 1: Source separation
     print("\n[Stage 1] Source separation (3-pass cascade)...")
     stems = separate_audio(
@@ -136,6 +155,8 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             semi_tone_shift=config.pitch_change,
             auto_f0_adjust=config.auto_f0_adjust,
             inference_cfg_rate=config.inference_cfg_rate,
+            ref_start_time=config.ref_start_time,
+            ref_end_time=config.ref_end_time,
         )
 
     gc.collect()
@@ -228,6 +249,8 @@ def convert_with_seedvc(
     semi_tone_shift: int = 0,
     auto_f0_adjust: bool = True,
     inference_cfg_rate: float = 0.7,
+    ref_start_time: float | None = None,
+    ref_end_time: float | None = None,
 ) -> Path:
     """
     Convert voice using Seed-VC (Engine B).
@@ -247,6 +270,8 @@ def convert_with_seedvc(
         auto_f0_adjust=auto_f0_adjust,  # Match pitch range to reference
         inference_cfg_rate=inference_cfg_rate,
         fp16=False,  # MPS compatibility
+        ref_start_time=ref_start_time,
+        ref_end_time=ref_end_time,
     )
 
 
@@ -266,6 +291,10 @@ if __name__ == "__main__":
     parser.add_argument("--auto-f0", action="store_true", default=True, help="Auto-adjust pitch to reference range")
     parser.add_argument("--no-auto-f0", action="store_false", dest="auto_f0", help="Disable auto F0 adjustment")
     parser.add_argument("--cfg", type=float, default=0.7, help="Classifier-free guidance rate (0.5-0.9)")
+    parser.add_argument("--start-time", "-ss", help="Source start time (e.g., '1:30' or '90')")
+    parser.add_argument("--end-time", "-to", help="Source end time (e.g., '2:30' or '150')")
+    parser.add_argument("--ref-start-time", help="Reference start time")
+    parser.add_argument("--ref-end-time", help="Reference end time")
     parser.add_argument("--output-dir", type=Path, default=Path("song_output"))
     parser.add_argument("--format", choices=["wav", "mp3"], default="wav")
     parser.add_argument("--no-keep-files", action="store_true")
@@ -310,6 +339,10 @@ if __name__ == "__main__":
         diffusion_steps=args.steps,
         auto_f0_adjust=args.auto_f0,
         inference_cfg_rate=args.cfg,
+        start_time=parse_time(args.start_time) if args.start_time else None,
+        end_time=parse_time(args.end_time) if args.end_time else None,
+        ref_start_time=parse_time(args.ref_start_time) if args.ref_start_time else None,
+        ref_end_time=parse_time(args.ref_end_time) if args.ref_end_time else None,
         output_dir=args.output_dir,
         output_format=args.format,
         keep_files=not args.no_keep_files,

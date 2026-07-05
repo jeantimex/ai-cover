@@ -126,6 +126,32 @@ python pipeline.py "高音歌曲.mp3" \
 | 女中音 (Mezzo) | 中 (A3-A5) | 与女高音相差 ±2-3 半音 |
 | 女低音 (Alto) | 低 (F3-F5) | 与女高音相差 ±4-5 半音 |
 
+### 声音相似度（CFG 率）
+
+`--cfg` 参数控制输出与参考声音音色的相似程度。
+
+| 值 | 效果 |
+|---|------|
+| `0.5` | 非常轻微 — 接近原声 |
+| `0.7` | 平衡（默认） |
+| `0.8` | 更接近参考 |
+| `0.85` | 强参考相似度 |
+| `0.9` | 非常接近参考 |
+| `0.95` | 最大相似度（可能有瑕疵） |
+
+**示例：让声音更像参考**
+```bash
+python pipeline.py "song.mp3" \
+    --reference "voice.wav" \
+    --cfg 0.9 --steps 75 --no-auto-f0
+```
+
+**提高相似度的技巧：**
+- 使用 20-30 秒多样化的演唱作为参考（不要只有一个音符）
+- 更高的 `--cfg`（0.85-0.9）获得更强的相似度
+- 添加 `--no-auto-f0` 防止音高调整保留原始特征
+- 更高的 `--steps`（75-100）在高 CFG 值时提升质量
+
 ### 自动 F0 vs 手动控制
 
 | 设置 | 使用场景 |
@@ -160,6 +186,37 @@ python pipeline.py "高音歌曲.mp3" \
 | `--cfg` | 0.7 | 无分类器引导率（0.5-0.9） |
 | `--auto-f0` | 开启 | 自动调整音高以匹配参考音域 |
 | `--no-auto-f0` | — | 禁用自动音高调整 |
+
+### 时间范围
+
+| 参数 | 格式 | 说明 |
+|-----|------|------|
+| `--start-time` / `-ss` | `1:30` 或 `90` | 源音频开始时间 |
+| `--end-time` / `-to` | `2:30` 或 `150` | 源音频结束时间 |
+| `--ref-start-time` | `1:30` 或 `90` | 参考音频开始时间 |
+| `--ref-end-time` | `2:30` 或 `150` | 参考音频结束时间 |
+
+**示例：只处理 30 秒源音频**
+```bash
+python pipeline.py "https://youtube.com/watch?v=..." \
+    --reference voice.wav \
+    --start-time 1:00 --end-time 1:30
+```
+
+**示例：使用参考音频的特定部分（如人声清晰的副歌）**
+```bash
+python pipeline.py "song.mp3" \
+    --reference "https://youtube.com/watch?v=..." \
+    --ref-start-time 1:15 --ref-end-time 1:45
+```
+
+**示例：同时裁剪源和参考音频**
+```bash
+python pipeline.py "song.mp3" \
+    --reference "voice.mp3" \
+    -ss 0:30 -to 1:00 \
+    --ref-start-time 0:45 --ref-end-time 1:15
+```
 
 ### 输出参数
 

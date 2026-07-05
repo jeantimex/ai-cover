@@ -126,6 +126,32 @@ python pipeline.py "soprano_song.mp3" \
 | Mezzo-soprano | Medium (A3-A5) | ±2-3 semitones from soprano |
 | Alto/Contralto | Low (F3-F5) | ±4-5 semitones from soprano |
 
+### Voice Similarity (CFG Rate)
+
+The `--cfg` parameter controls how closely the output matches the reference voice timbre.
+
+| Value | Effect |
+|-------|--------|
+| `0.5` | Very subtle — mostly original voice |
+| `0.7` | Balanced (default) |
+| `0.8` | More like reference |
+| `0.85` | Strong reference similarity |
+| `0.9` | Very close to reference |
+| `0.95` | Maximum similarity (may have artifacts) |
+
+**Example: Sound more like the reference**
+```bash
+python pipeline.py "song.mp3" \
+    --reference "voice.wav" \
+    --cfg 0.9 --steps 75 --no-auto-f0
+```
+
+**Tips for better similarity:**
+- Use 20-30 seconds of varied singing as reference (not just one note)
+- Higher `--cfg` (0.85-0.9) for stronger similarity
+- Add `--no-auto-f0` to prevent pitch adjustments that may keep original character
+- Higher `--steps` (75-100) improves quality at high CFG values
+
 ### Auto F0 vs Manual Control
 
 | Setting | Use When |
@@ -160,6 +186,37 @@ python pipeline.py "soprano_song.mp3" \
 | `--cfg` | 0.7 | Classifier-free guidance rate (0.5-0.9) |
 | `--auto-f0` | enabled | Auto-adjust pitch to match reference range |
 | `--no-auto-f0` | — | Disable auto pitch adjustment |
+
+### Time Range
+
+| Parameter | Format | Description |
+|-----------|--------|-------------|
+| `--start-time` / `-ss` | `1:30` or `90` | Source start time |
+| `--end-time` / `-to` | `2:30` or `150` | Source end time |
+| `--ref-start-time` | `1:30` or `90` | Reference start time |
+| `--ref-end-time` | `2:30` or `150` | Reference end time |
+
+**Example: Process only 30 seconds of source**
+```bash
+python pipeline.py "https://youtube.com/watch?v=..." \
+    --reference voice.wav \
+    --start-time 1:00 --end-time 1:30
+```
+
+**Example: Use specific part of reference (e.g., chorus with clear vocals)**
+```bash
+python pipeline.py "song.mp3" \
+    --reference "https://youtube.com/watch?v=..." \
+    --ref-start-time 1:15 --ref-end-time 1:45
+```
+
+**Example: Trim both source and reference**
+```bash
+python pipeline.py "song.mp3" \
+    --reference "voice.mp3" \
+    -ss 0:30 -to 1:00 \
+    --ref-start-time 0:45 --ref-end-time 1:15
+```
 
 ### Output
 

@@ -107,7 +107,7 @@ _patch_torch_for_mps()
 
 from seed_vc import api as seed_vc_api
 from seed_vc.Models.audio import AudioData
-from download import acquire_audio
+from download import acquire_audio, trim_audio
 
 
 def load_audio_as_audiodata(audio_path: Path) -> AudioData:
@@ -134,10 +134,16 @@ def load_audio_as_audiodata(audio_path: Path) -> AudioData:
     )
 
 
-def resolve_reference(reference: str | Path, output_dir: Path, separate_vocals: bool = True) -> Path:
+def resolve_reference(
+    reference: str | Path,
+    output_dir: Path,
+    separate_vocals: bool = True,
+    start_time: float | None = None,
+    end_time: float | None = None,
+) -> Path:
     """
     Resolve reference audio - can be a local file or YouTube URL.
-    Downloads if it's a URL, optionally separates vocals.
+    Downloads if it's a URL, optionally separates vocals and trims.
     """
     reference_str = str(reference)
 
@@ -145,12 +151,23 @@ def resolve_reference(reference: str | Path, output_dir: Path, separate_vocals: 
         print(f"  Downloading reference audio from URL...")
         ref_path, ref_id = acquire_audio(reference_str, output_dir / "references")
 
+        # Trim if time range specified
+        if start_time is not None or end_time is not None:
+            trimmed_path = output_dir / "references" / f"{ref_id}_trimmed.wav"
+            ref_path = trim_audio(ref_path, trimmed_path, start_time, end_time)
+            print(f"  Trimmed reference to {start_time or 0:.1f}s - {end_time or 'end'}s")
+
         if separate_vocals:
             # Import here to avoid circular import
             from separate import separate_audio
 
+            # Generate a unique ID for trimmed version
+            trim_suffix = ""
+            if start_time is not None or end_time is not None:
+                trim_suffix = f"_{int(start_time or 0)}_{int(end_time or 9999)}"
+
             # Check if we already have separated vocals for this reference
-            ref_vocal_path = output_dir / "references" / ref_id / "dry_main_vocal.wav"
+            ref_vocal_path = output_dir / "references" / f"{ref_id}{trim_suffix}" / "dry_main_vocal.wav"
             if ref_vocal_path.exists():
                 print(f"  Using cached separated reference vocal")
                 return ref_vocal_path
@@ -164,7 +181,13 @@ def resolve_reference(reference: str | Path, output_dir: Path, separate_vocals: 
 
         return ref_path
 
-    return Path(reference)
+    # Local file - still apply trimming if specified
+    local_path = Path(reference)
+    if start_time is not None or end_time is not None:
+        trimmed_path = output_dir / "references" / f"{local_path.stem}_trimmed.wav"
+        return trim_audio(local_path, trimmed_path, start_time, end_time)
+
+    return local_path
 
 
 def convert_voice(
@@ -179,6 +202,8 @@ def convert_voice(
     auto_f0_adjust: bool = False,
     semi_tone_shift: int = 0,
     fp16: bool = False,
+    ref_start_time: float | None = None,
+    ref_end_time: float | None = None,
 ) -> Path:
     """
     Convert source vocals to match the target voice.
@@ -205,7 +230,13 @@ def convert_voice(
         raise FileNotFoundError(f"Source vocal not found: {source_path}")
 
     # Resolve reference - can be local file or YouTube URL
-    reference_path = resolve_reference(reference, output_path.parent, separate_vocals=separate_reference)
+    reference_path = resolve_reference(
+        reference,
+        output_path.parent,
+        separate_vocals=separate_reference,
+        start_time=ref_start_time,
+        end_time=ref_end_time,
+    )
     if not reference_path.exists():
         raise FileNotFoundError(f"Reference audio not found: {reference_path}")
 
