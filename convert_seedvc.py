@@ -7,10 +7,19 @@ No training required - uses a single shared model.
 
 import os
 import warnings
+import logging
 from pathlib import Path
 
 # Suppress WhisperFeatureExtractor sampling_rate warning
-warnings.filterwarnings("ignore", message=".*sampling_rate.*WhisperFeatureExtractor.*")
+warnings.filterwarnings("ignore", message=".*sampling_rate.*")
+warnings.filterwarnings("ignore", message=".*WhisperFeatureExtractor.*")
+
+# Suppress transformers warnings (including WhisperFeatureExtractor)
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("transformers.models.whisper").setLevel(logging.ERROR)
+
+# Also suppress via environment variable (for transformers custom logging)
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 
 import numpy as np
 import soundfile as sf
